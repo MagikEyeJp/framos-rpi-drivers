@@ -71,6 +71,9 @@ enum pad_types {
 #define IMX900_PIXEL_ARRAY_WIDTH	2064U
 #define IMX900_PIXEL_ARRAY_HEIGHT	1552U
 
+#define IMX900_VBLANK_MIN     4
+#define IMX900_VBLANK_MAX     0x1ffff  /* 実質 1 秒超 (行時間依存) */
+
 #define V4L2_CID_FRAME_RATE		(V4L2_CID_USER_IMX_BASE + 1)
 #define V4L2_CID_OPERATION_MODE		(V4L2_CID_USER_IMX_BASE + 2)
 #define V4L2_CID_GLOBAL_SHUTTER_MODE	(V4L2_CID_USER_IMX_BASE + 3)
@@ -488,6 +491,12 @@ struct imx900 {
 	struct mutex mutex;
 	bool streaming;
 };
+struct imx900_regval {
+        u16 reg;
+        u32 len;   /* write length: 1/2/3 bytes */
+        u32 val;
+};
+
 
 static inline struct imx900 *to_imx900(struct v4l2_subdev *_sd)
 {
@@ -649,6 +658,37 @@ reghold_off:
 	return ret;
 
 }
+static int imx900_write_hold_reg_list(struct imx900 *imx900, const struct imx900_regval  *regs, unsigned int n_regs)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
+	struct device *dev = &client->dev;
+	int ret, i;
+
+	ret = imx900_write_reg(imx900, REGHOLD, 1, 0x01);
+	if (ret) {
+		dev_err(dev, "%s: failed to set HOLD=1\n", __func__);
+		return ret;
+	}
+
+	for (i = 0; i < n_regs; i++) {
+			ret = imx900_write_reg(imx900,
+									regs[i].reg,
+									regs[i].len,
+									regs[i].val);
+			if (ret)
+					goto err_release;
+	}
+
+	ret = imx900_write_reg(imx900, REGHOLD, 1, 0x00);
+	if (ret)
+			dev_err(dev, "%s: failed to release HOLD\n", __func__);
+
+	return ret;
+
+err_release:
+	imx900_write_reg(imx900, REGHOLD, 1, 0x00);    /* 最低限の解除 */
+	return ret;
+}
 
 static int imx900_write_table(struct imx900 *imx900,
 				 const struct imx900_reg *regs, u32 len)
@@ -774,21 +814,86 @@ static int imx900_chromacity_mode(struct imx900 *imx900)
 	return ret;
 }
 
-static int imx900_set_exposure(struct imx900 *imx900, u64 val)
+static u32 imx900_frame_rate_to_frame_length(struct imx900 *imx900, u64 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
-	u64 exposure;
+	u32 frame_length = (IMX900_M_FACTOR * IMX900_G_FACTOR) / (val * imx900->line_time);
+	dev_err(dev, "imx900_frame_rate_to_frame_length: val=%llu, line_time=%llu, frame_length=%u\n", val, imx900->line_time, frame_length);
+	
+	if (frame_length < mode->height + imx900->min_frame_length_delta)
+		frame_length = mode->height + imx900->min_frame_length_delta;
+
+	return frame_length;
+}
+
+static void imx900_update_frame_rate(struct imx900 *imx900, u64 val)
+{
+
+	const struct imx900_mode *mode = imx900->mode;
+	u32 update_vblank;
+
+	imx900->frame_length = imx900_frame_rate_to_frame_length(imx900, val);	
+
+	update_vblank = imx900->frame_length - mode->height;
+
+	__v4l2_ctrl_s_ctrl(imx900->vblank, update_vblank);
+
+}
+
+static int imx900_set_exposure(struct imx900 *imx900, u32 val)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
+	struct device *dev = &client->dev;
+	const struct imx900_mode *mode = imx900->mode;
+	u32 frame_lines;
+	u32 new_frame_lines;
+	u32 new_vblank = 0;
 	int ret;
+	static u32 count = 0;
 
-	exposure = imx900->vblank->val + mode->height - val;
+	frame_lines = imx900_frame_rate_to_frame_length(imx900, imx900->framerate->cur.val);
+	dev_err(dev, "[%u] set exposure extend: val=%llu\n", count++, (u64)val);
+	dev_err(dev, "  fps=%u, frame_lines=%u min_shs_length=%u height=%u \n", imx900->framerate->cur.val, frame_lines, imx900->min_shs_length, mode->height);
 
-	ret = imx900_write_hold_reg(imx900, SHS_LOW, 3, exposure);
-	if (ret) {
-		dev_err(dev, "%s failed to set exposure\n", __func__);
-		return ret;
+	new_frame_lines = val + imx900->min_shs_length + imx900->min_frame_length_delta;
+	
+	if (new_frame_lines > frame_lines) {
+		frame_lines = new_frame_lines;
+		dev_err(dev, "    extend frame_lines=%u shs=%u\n", frame_lines, frame_lines - val - 1);
 	}
+	new_vblank = frame_lines - mode->height;
+	imx900->vblank->val = new_vblank;
+	imx900->vblank->cur.val = new_vblank;
+	imx900->frame_length = frame_lines;
+	
+	{
+		struct imx900_regval rlist[2] = {
+				{ VMAX_LOW, 3, frame_lines },
+				{ SHS_LOW, 3, frame_lines - val - 1 }
+		};
+
+		ret = imx900_write_hold_reg_list(imx900, rlist, ARRAY_SIZE(rlist));
+		if (ret) {
+			dev_err(dev, "%s failed to set exposure\n", __func__);
+			return ret;
+		}
+	}
+	//  else {
+	// 	dev_err(dev, "shs=%u\n", frame_lines - val - 1);
+	// 	ret = imx900_write_hold_reg(imx900, SHS_LOW, 3, frame_lines - val - 1);		
+	// 	if (ret) {
+	// 			dev_err(dev, "%s failed to set exposure\n", __func__);
+	// 			return ret;
+	// 	}
+	// }
+	
+	// if (new_vblank > 0) {
+	// 	__v4l2_ctrl_s_ctrl(imx900->vblank, new_vblank);
+	// } else {
+	// 	imx900_update_frame_rate(imx900, imx900->framerate->cur.val);
+	// }
 
 	return ret;
 }
@@ -846,18 +951,33 @@ static void imx900_adjust_min_shs_length(struct imx900 *imx900)
 
 static void imx900_adjust_exposure_range(struct imx900 *imx900)
 {
-	const struct imx900_mode *mode = imx900->mode;
-	u64 exposure_max;
+	// const struct imx900_mode *mode = imx900->mode;
+	// u64 exposure_max;
 
 	imx900_adjust_min_shs_length(imx900);
-	exposure_max = imx900->vblank->val + mode->height - imx900->min_shs_length;
+	// exposure_max = imx900->vblank->val + mode->height - imx900->min_shs_length;
 
-	__v4l2_ctrl_modify_range(imx900->exposure, IMX900_MIN_INTEGRATION_LINES,
-				exposure_max, 1,
-				exposure_max);
+	// __v4l2_ctrl_modify_range(imx900->exposure, IMX900_MIN_INTEGRATION_LINES,
+	// 			exposure_max, 1,
+	// 			exposure_max);
 }
 
-static int imx900_set_frame_rate(struct imx900 *imx900, u64 val)
+
+static void imx900_update_vblank(struct imx900 *imx900, u64 val)
+{
+	const struct imx900_mode *mode = imx900->mode;
+
+	if (val < imx900->min_frame_length_delta) {
+		val = imx900->min_frame_length_delta;
+		dev_err(imx900->sd.dev, "vblank value is too low, setting to %llu\n", val);
+	}
+	imx900->frame_length = mode->height + val;
+
+	imx900_adjust_exposure_range(imx900);
+}
+
+
+static int imx900_set_vblank(struct imx900 *imx900, u64 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
@@ -871,24 +991,6 @@ static int imx900_set_frame_rate(struct imx900 *imx900, u64 val)
 	}
 
 	return ret;
-
-}
-
-static void imx900_update_frame_rate(struct imx900 *imx900, u64 val)
-{
-
-	const struct imx900_mode *mode = imx900->mode;
-	u32 update_vblank;
-
-	imx900->frame_length = (IMX900_M_FACTOR * IMX900_G_FACTOR) /
-						(val * imx900->line_time);
-
-	update_vblank = imx900->frame_length - mode->height;
-
-	__v4l2_ctrl_modify_range(imx900->vblank, update_vblank,
-				 update_vblank, 1, update_vblank);
-
-	__v4l2_ctrl_s_ctrl(imx900->vblank, update_vblank);
 
 }
 
@@ -1165,12 +1267,14 @@ static void imx900_adjust_min_frame_length_delta(struct imx900 *imx900)
 		break;
 	}
 
+	u32 max_frame_length = (u32)(((u64)IMX900_G_FACTOR / (u64)IMX900_M_FACTOR) * (u64)mode->min_fps / (u64)imx900->line_time);
+
 	dev_dbg(dev, "%s: adjusted min_frame_length_delta: %d\n", __func__,
 						imx900->min_frame_length_delta);
 
 	__v4l2_ctrl_modify_range(imx900->vblank,
 				 imx900->min_frame_length_delta,
-				 imx900->min_frame_length_delta,
+				 max_frame_length - mode->height,
 				 1, imx900->min_frame_length_delta);
 
 	dev_dbg(dev, "%s: vblank: %d\n", __func__, imx900->min_frame_length_delta);
@@ -1537,7 +1641,7 @@ static int imx900_set_ctrl(struct v4l2_ctrl *ctrl)
 		imx900_update_frame_rate(imx900, ctrl->val);
 		break;
 	case V4L2_CID_VBLANK:
-		imx900_adjust_exposure_range(imx900);
+		imx900_update_vblank(imx900, ctrl->val);
 		break;
 	}
 
@@ -1554,8 +1658,8 @@ static int imx900_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_TEST_PATTERN:
 		imx900_set_test_pattern(imx900, ctrl->val);
 		break;
-	case V4L2_CID_FRAME_RATE:
-		ret = imx900_set_frame_rate(imx900, ctrl->val);
+	case V4L2_CID_VBLANK:
+		ret = imx900_set_vblank(imx900, ctrl->val);
 		break;
 	case V4L2_CID_BLACK_LEVEL:
 		ret = imx900_set_blklvl(imx900, ctrl->val);
@@ -2311,7 +2415,7 @@ static int imx900_init_controls(struct imx900 *imx900)
 		imx900->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	imx900->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
-					V4L2_CID_VBLANK, 0, 0, 1, 0);
+					V4L2_CID_VBLANK, IMX900_VBLANK_MIN, IMX900_VBLANK_MAX, 1, IMX900_VBLANK_MIN);
 
 	imx900->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
 					V4L2_CID_HBLANK, 0, 0, 1, 0);
@@ -2322,7 +2426,7 @@ static int imx900_init_controls(struct imx900 *imx900)
 	imx900->exposure = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
 					V4L2_CID_EXPOSURE,
 					IMX900_MIN_INTEGRATION_LINES,
-					0xFF, 1, 0xFF);
+					0xFFFF, 1, 0xFF);
 
 	imx900->framerate = v4l2_ctrl_new_custom(ctrl_hdlr,
 					imx900_ctrl_framerate, NULL);
