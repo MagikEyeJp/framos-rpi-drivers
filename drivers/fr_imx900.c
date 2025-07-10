@@ -74,7 +74,7 @@ enum pad_types {
 #define IMX900_PIXEL_ARRAY_HEIGHT	1552U
 
 #define IMX900_VBLANK_MIN     4
-#define IMX900_VBLANK_MAX     0x1ffff  /* 実質 1 秒超 (行時間依存) */
+#define IMX900_VBLANK_MAX     4
 
 #define V4L2_CID_FRAME_RATE		(V4L2_CID_USER_IMX_BASE + 1)
 #define V4L2_CID_OPERATION_MODE		(V4L2_CID_USER_IMX_BASE + 2)
@@ -846,11 +846,15 @@ static void imx900_update_frame_rate(struct imx900 *imx900, u64 val)
 	const struct imx900_mode *mode = imx900->mode;
 	u32 update_vblank;
 
-	imx900->frame_length = imx900_frame_rate_to_frame_length(imx900, val);	
+       imx900->frame_length = imx900_frame_rate_to_frame_length(imx900, val);
 
-	update_vblank = imx900->frame_length - mode->height;
+       update_vblank = imx900->frame_length - mode->height;
 
-	__v4l2_ctrl_s_ctrl(imx900->vblank, update_vblank);
+       __v4l2_ctrl_modify_range(imx900->vblank,
+                                update_vblank, update_vblank,
+                                1, update_vblank);
+
+       __v4l2_ctrl_s_ctrl(imx900->vblank, update_vblank);
 
 }
 
@@ -876,10 +880,11 @@ static int imx900_set_exposure(struct imx900 *imx900, u32 val)
 		frame_lines = new_frame_lines;
 		dev_err(dev, "    extend frame_lines=%u shs=%u\n", frame_lines, frame_lines - val - 1);
 	}
-	new_vblank = frame_lines - mode->height;
-	imx900->vblank->val = new_vblank;
-	imx900->vblank->cur.val = new_vblank;
-	imx900->frame_length = frame_lines;
+       new_vblank = frame_lines - mode->height;
+       __v4l2_ctrl_modify_range(imx900->vblank,
+                                new_vblank, new_vblank,
+                                1, new_vblank);
+       imx900->frame_length = frame_lines;
 	
 	{
 		struct imx900_regval rlist[2] = {
@@ -1298,10 +1303,10 @@ static void imx900_adjust_min_frame_length_delta(struct imx900 *imx900)
 	dev_dbg(dev, "%s: adjusted min_frame_length_delta: %d\n", __func__,
 						imx900->min_frame_length_delta);
 
-	__v4l2_ctrl_modify_range(imx900->vblank,
-				 imx900->min_frame_length_delta,
-				 max_frame_length - mode->height,
-				 1, imx900->min_frame_length_delta);
+       __v4l2_ctrl_modify_range(imx900->vblank,
+                                imx900->min_frame_length_delta,
+                                imx900->min_frame_length_delta,
+                                1, imx900->min_frame_length_delta);
 
 	dev_dbg(dev, "%s: vblank: %d\n", __func__, imx900->min_frame_length_delta);
 
@@ -2470,14 +2475,12 @@ static int imx900_init_controls(struct imx900 *imx900)
 	if (imx900->link_freq)
 		imx900->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-       imx900->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
-                                       V4L2_CID_VBLANK,
-                                       IMX900_VBLANK_MIN,
-                                       IMX900_VBLANK_MAX,
-                                       1,
-                                       IMX900_VBLANK_MIN);
-       if (imx900->vblank)
-               imx900->vblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+	imx900->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
+					V4L2_CID_VBLANK,
+					IMX900_VBLANK_MIN,
+					IMX900_VBLANK_MAX,
+					1,
+					IMX900_VBLANK_MIN);
 
 	imx900->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
 					V4L2_CID_HBLANK, 0, 0, 1, 0);
