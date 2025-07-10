@@ -1,0 +1,18 @@
+# Build artifacts
+*.o
+*.ko
+*.ko.*
+*.mod
+*.mod.c
+*.order
+Module.symvers
+modules.order
+.tmp_versions/
+
+# Device tree outputs
+overlays/*.dtbo
+overlays/preprocessed/
+
+# Editors
+*.swp
+*~
