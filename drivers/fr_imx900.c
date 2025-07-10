@@ -995,19 +995,22 @@ static void imx900_update_vblank(struct imx900 *imx900, u64 val)
 
 static int imx900_set_vblank(struct imx900 *imx900, u64 val)
 {
-	IMX900_DBG_ENTRY();
-	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
-	struct device *dev = &client->dev;
-	int ret;
+        IMX900_DBG_ENTRY();
+        struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
+        struct device *dev = &client->dev;
+        int ret;
 
-	ret = imx900_write_hold_reg(imx900, VMAX_LOW, 3, imx900->frame_length);
+        ret = imx900_write_hold_reg(imx900, VMAX_LOW, 3, imx900->frame_length);
 
-	if (ret) {
-		dev_err(dev, "%s failed to set frame rate\n", __func__);
-		return ret;
-	}
+        if (ret) {
+                dev_err(dev, "%s failed to set frame rate\n", __func__);
+                return ret;
+        }
 
-	return ret;
+       dev_err(dev, "%s: vblank=%llu frame_length=%u\n", __func__, val,
+               imx900->frame_length);
+
+        return ret;
 
 }
 
