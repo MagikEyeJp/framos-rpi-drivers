@@ -2470,8 +2470,14 @@ static int imx900_init_controls(struct imx900 *imx900)
 	if (imx900->link_freq)
 		imx900->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-	imx900->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
-					V4L2_CID_VBLANK, IMX900_VBLANK_MIN, IMX900_VBLANK_MAX, 1, IMX900_VBLANK_MIN);
+       imx900->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
+                                       V4L2_CID_VBLANK,
+                                       IMX900_VBLANK_MIN,
+                                       IMX900_VBLANK_MAX,
+                                       1,
+                                       IMX900_VBLANK_MIN);
+       if (imx900->vblank)
+               imx900->vblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	imx900->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx900_ctrl_ops,
 					V4L2_CID_HBLANK, 0, 0, 1, 0);
