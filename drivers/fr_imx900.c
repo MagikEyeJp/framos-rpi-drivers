@@ -24,6 +24,8 @@
 #include "fr_max96792.h"
 #include "fr_max96793.h"
 
+#define IMX900_DBG_ENTRY()    pr_err("%s entry\n", __func__)
+
 #define IMX900_K_FACTOR				1000LL
 #define IMX900_M_FACTOR				1000000LL
 #define IMX900_G_FACTOR				1000000000LL
@@ -580,6 +582,7 @@ static const char * const imx900_global_shutter_menu[] = {
 
 static int imx900_read_reg(struct imx900 *imx900, u16 reg, u32 len, u32 *val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct i2c_msg msgs[2];
 	u8 addr_buf[2] = { reg >> 8, reg & 0xff };
@@ -610,6 +613,7 @@ static int imx900_read_reg(struct imx900 *imx900, u16 reg, u32 len, u32 *val)
 
 static int imx900_write_reg(struct imx900 *imx900, u16 reg, u32 len, u32 val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	u8 buf[6];
 
@@ -627,6 +631,7 @@ static int imx900_write_reg(struct imx900 *imx900, u16 reg, u32 len, u32 val)
 
 static int imx900_write_hold_reg(struct imx900 *imx900, u16 reg, u32 len, u32 val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -660,6 +665,7 @@ reghold_off:
 }
 static int imx900_write_hold_reg_list(struct imx900 *imx900, const struct imx900_regval  *regs, unsigned int n_regs)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret, i;
@@ -693,6 +699,7 @@ err_release:
 static int imx900_write_table(struct imx900 *imx900,
 				 const struct imx900_reg *regs, u32 len)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	unsigned int i;
 	int ret;
@@ -713,6 +720,7 @@ static int imx900_write_table(struct imx900 *imx900,
 
 static u32 imx900_get_format_code(struct imx900 *imx900, u32 code)
 {
+	IMX900_DBG_ENTRY();
 	unsigned int i;
 
 	lockdep_assert_held(&imx900->mutex);
@@ -741,6 +749,7 @@ static u32 imx900_get_format_code(struct imx900 *imx900, u32 code)
 
 static int imx900_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
+	IMX900_DBG_ENTRY();
 	struct imx900 *imx900 = to_imx900(sd);
 	struct v4l2_mbus_framefmt *try_fmt_img =
 		v4l2_subdev_get_try_format(sd, fh->state, IMAGE_PAD);
@@ -779,6 +788,7 @@ static int imx900_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 static int imx900_chromacity_mode(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -816,6 +826,7 @@ static int imx900_chromacity_mode(struct imx900 *imx900)
 
 static u32 imx900_frame_rate_to_frame_length(struct imx900 *imx900, u64 val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -830,6 +841,7 @@ static u32 imx900_frame_rate_to_frame_length(struct imx900 *imx900, u64 val)
 
 static void imx900_update_frame_rate(struct imx900 *imx900, u64 val)
 {
+	IMX900_DBG_ENTRY();
 
 	const struct imx900_mode *mode = imx900->mode;
 	u32 update_vblank;
@@ -844,6 +856,7 @@ static void imx900_update_frame_rate(struct imx900 *imx900, u64 val)
 
 static int imx900_set_exposure(struct imx900 *imx900, u32 val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -900,6 +913,7 @@ static int imx900_set_exposure(struct imx900 *imx900, u32 val)
 
 static void imx900_adjust_min_shs_length(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -951,6 +965,7 @@ static void imx900_adjust_min_shs_length(struct imx900 *imx900)
 
 static void imx900_adjust_exposure_range(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	// const struct imx900_mode *mode = imx900->mode;
 	// u64 exposure_max;
 
@@ -965,6 +980,7 @@ static void imx900_adjust_exposure_range(struct imx900 *imx900)
 
 static void imx900_update_vblank(struct imx900 *imx900, u64 val)
 {
+	IMX900_DBG_ENTRY();
 	const struct imx900_mode *mode = imx900->mode;
 
 	if (val < imx900->min_frame_length_delta) {
@@ -979,6 +995,7 @@ static void imx900_update_vblank(struct imx900 *imx900, u64 val)
 
 static int imx900_set_vblank(struct imx900 *imx900, u64 val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -996,6 +1013,7 @@ static int imx900_set_vblank(struct imx900 *imx900, u64 val)
 
 static void imx900_adjust_hmax_register(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	const struct imx900_mode *mode = imx900->mode;
 
 	switch (mode->type) {
@@ -1042,6 +1060,7 @@ static void imx900_adjust_hmax_register(struct imx900 *imx900)
 
 static void imx900_adjust_pixel_rate(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	const struct imx900_mode *mode = imx900->mode;
 	struct device *dev = &client->dev;
@@ -1108,6 +1127,7 @@ static void imx900_adjust_pixel_rate(struct imx900 *imx900)
 
 static int imx900_set_hmax_register(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -1124,6 +1144,7 @@ static int imx900_set_hmax_register(struct imx900 *imx900)
 
 static void imx900_adjust_link_frequency(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
@@ -1174,6 +1195,7 @@ static void imx900_adjust_link_frequency(struct imx900 *imx900)
 
 static int imx900_set_data_rate(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -1216,6 +1238,7 @@ static int imx900_set_data_rate(struct imx900 *imx900)
 
 static void imx900_adjust_min_frame_length_delta(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -1283,6 +1306,7 @@ static void imx900_adjust_min_frame_length_delta(struct imx900 *imx900)
 
 static int imx900_set_mode_additional(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -1330,6 +1354,7 @@ static int imx900_set_mode_additional(struct imx900 *imx900)
 
 static int imx900_set_dep_registers(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -1396,6 +1421,7 @@ static int imx900_set_dep_registers(struct imx900 *imx900)
 
 static int imx900_set_test_pattern(struct imx900 *imx900, u32 val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -1433,6 +1459,7 @@ fail:
 
 static void imx900_update_blklvl_range(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	switch (imx900->fmt_code) {
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
@@ -1467,6 +1494,7 @@ static void imx900_update_blklvl_range(struct imx900 *imx900)
 
 static int imx900_set_blklvl(struct imx900 *imx900, u64 val)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -1485,6 +1513,7 @@ static int imx900_set_blklvl(struct imx900 *imx900, u64 val)
 
 static int imx900_set_operation_mode(struct imx900 *imx900, u32 val)
 {
+	IMX900_DBG_ENTRY();
 	gpiod_set_raw_value_cansleep(imx900->xmaster, val);
 
 	return 0;
@@ -1492,6 +1521,7 @@ static int imx900_set_operation_mode(struct imx900 *imx900, u32 val)
 
 static int imx900_set_pixel_format(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -1544,6 +1574,7 @@ static int imx900_set_pixel_format(struct imx900 *imx900)
 
 static int imx900_set_shutter_mode(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -1631,6 +1662,7 @@ static int imx900_set_shutter_mode(struct imx900 *imx900)
 
 static int imx900_set_ctrl(struct v4l2_ctrl *ctrl)
 {
+	IMX900_DBG_ENTRY();
 	struct imx900 *imx900 =
 		container_of(ctrl->handler, struct imx900, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
@@ -1682,6 +1714,7 @@ static int imx900_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
+	IMX900_DBG_ENTRY();
 	struct imx900 *imx900 = to_imx900(sd);
 
 	if (code->pad >= NUM_PADS)
@@ -1715,6 +1748,7 @@ static int imx900_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_state *sd_state,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
+	IMX900_DBG_ENTRY();
 	struct imx900 *imx900 = to_imx900(sd);
 
 	if (fse->pad >= NUM_PADS)
@@ -1751,6 +1785,7 @@ static int imx900_enum_frame_size(struct v4l2_subdev *sd,
 
 static void imx900_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 {
+	IMX900_DBG_ENTRY();
 	fmt->colorspace = V4L2_COLORSPACE_RAW;
 	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
 	fmt->quantization = V4L2_MAP_QUANTIZATION_DEFAULT(true,
@@ -1763,6 +1798,7 @@ static void imx900_update_image_pad_format(struct imx900 *imx900,
 						const struct imx900_mode *mode,
 						struct v4l2_subdev_format *fmt)
 {
+	IMX900_DBG_ENTRY();
 	fmt->format.width = mode->width;
 	fmt->format.height = mode->height;
 	fmt->format.field = V4L2_FIELD_NONE;
@@ -1771,6 +1807,7 @@ static void imx900_update_image_pad_format(struct imx900 *imx900,
 
 static void imx900_update_metadata_pad_format(struct v4l2_subdev_format *fmt)
 {
+	IMX900_DBG_ENTRY();
 	fmt->format.width = IMX900_EMBEDDED_LINE_WIDTH;
 	fmt->format.height = IMX900_NUM_EMBEDDED_LINES;
 	fmt->format.code = MEDIA_BUS_FMT_SENSOR_DATA;
@@ -1781,6 +1818,7 @@ static int imx900_get_pad_format(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_format *fmt)
 {
+	IMX900_DBG_ENTRY();
 	struct imx900 *imx900 = to_imx900(sd);
 
 	if (fmt->pad >= NUM_PADS)
@@ -1813,6 +1851,7 @@ static int imx900_get_pad_format(struct v4l2_subdev *sd,
 
 static void imx900_set_limits(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
@@ -1850,6 +1889,7 @@ static int imx900_set_pad_format(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_format *fmt)
 {
+	IMX900_DBG_ENTRY();
 	struct v4l2_mbus_framefmt *framefmt;
 	const struct imx900_mode *mode;
 	struct imx900 *imx900 = to_imx900(sd);
@@ -1917,6 +1957,7 @@ static int imx900_get_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_selection *sel)
 {
+	IMX900_DBG_ENTRY();
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP: {
 		struct imx900 *imx900 = to_imx900(sd);
@@ -1952,6 +1993,7 @@ static int imx900_get_selection(struct v4l2_subdev *sd,
 
 static int imx900_set_mode(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
@@ -2024,6 +2066,7 @@ static int imx900_set_mode(struct imx900 *imx900)
 
 static int imx900_start_streaming(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -2084,6 +2127,7 @@ static int imx900_start_streaming(struct imx900 *imx900)
 
 static void imx900_stop_streaming(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -2108,6 +2152,7 @@ static void imx900_stop_streaming(struct imx900 *imx900)
 
 static int imx900_set_stream(struct v4l2_subdev *sd, int enable)
 {
+	IMX900_DBG_ENTRY();
 	struct imx900 *imx900 = to_imx900(sd);
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	int ret = 0;
@@ -2154,6 +2199,7 @@ err_unlock:
 
 static int imx900_gmsl_serdes_setup(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret = 0;
@@ -2211,6 +2257,7 @@ error:
 
 static void imx900_gmsl_serdes_reset(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 
 	mutex_lock(&imx900->mutex);
@@ -2224,6 +2271,7 @@ static void imx900_gmsl_serdes_reset(struct imx900 *imx900)
 
 static int imx900_power_on(struct device *dev)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = to_i2c_client(dev);
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx900 *imx900 = to_imx900(sd);
@@ -2241,6 +2289,7 @@ static int imx900_power_on(struct device *dev)
 
 static int imx900_power_off(struct device *dev)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = to_i2c_client(dev);
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx900 *imx900 = to_imx900(sd);
@@ -2259,6 +2308,7 @@ static int imx900_power_off(struct device *dev)
 
 static int __maybe_unused imx900_suspend(struct device *dev)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = to_i2c_client(dev);
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx900 *imx900 = to_imx900(sd);
@@ -2271,6 +2321,7 @@ static int __maybe_unused imx900_suspend(struct device *dev)
 
 static int __maybe_unused imx900_resume(struct device *dev)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = to_i2c_client(dev);
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx900 *imx900 = to_imx900(sd);
@@ -2292,6 +2343,7 @@ error:
 
 static int imx900_communication_verify(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
 	int ret;
@@ -2387,6 +2439,7 @@ static struct v4l2_ctrl_config imx900_ctrl_global_shutter_mode[] = {
 
 static int imx900_init_controls(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	struct v4l2_ctrl_handler *ctrl_hdlr;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx900->sd);
 	struct device *dev = &client->dev;
@@ -2495,12 +2548,14 @@ error:
 
 static void imx900_free_controls(struct imx900 *imx900)
 {
+	IMX900_DBG_ENTRY();
 	v4l2_ctrl_handler_free(imx900->sd.ctrl_handler);
 	mutex_destroy(&imx900->mutex);
 }
 
 static int imx900_check_hwcfg(struct device *dev, struct i2c_client *client)
 {
+	IMX900_DBG_ENTRY();
 	struct device_node *node = client->dev.of_node;
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx900 *imx900 = to_imx900(sd);
@@ -2569,6 +2624,7 @@ static const struct of_device_id imx900_dt_ids[] = {
 
 static int imx900_probe(struct i2c_client *client)
 {
+	IMX900_DBG_ENTRY();
 	struct device *dev = &client->dev;
 	struct imx900 *imx900;
 	const struct of_device_id *match;
@@ -2850,6 +2906,7 @@ error_power_off:
 
 static void imx900_remove(struct i2c_client *client)
 {
+	IMX900_DBG_ENTRY();
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx900 *imx900 = to_imx900(sd);
 
