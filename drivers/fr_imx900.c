@@ -24,7 +24,8 @@
 #include "fr_max96792.h"
 #include "fr_max96793.h"
 
-#define IMX900_DBG_ENTRY()    pr_err("%s entry\n", __func__)
+#define IMX900_DBG_ENTRY()    // pr_err("%s entry\n", __func__)
+#define IMX900_DBG_PRINT(fmt, ...)    // pr_err(fmt, __VA_ARGS__)
 
 #define IMX900_K_FACTOR				1000LL
 #define IMX900_M_FACTOR				1000000LL
@@ -831,7 +832,7 @@ static u32 imx900_frame_rate_to_frame_length(struct imx900 *imx900, u64 val)
 	struct device *dev = &client->dev;
 	const struct imx900_mode *mode = imx900->mode;
 	u32 frame_length = (IMX900_M_FACTOR * IMX900_G_FACTOR) / (val * imx900->line_time);
-	dev_err(dev, "imx900_frame_rate_to_frame_length: val=%llu, line_time=%llu, frame_length=%u\n", val, imx900->line_time, frame_length);
+	// dev_err(dev, "imx900_frame_rate_to_frame_length: val=%llu, line_time=%llu, frame_length=%u\n", val, imx900->line_time, frame_length);
 	
 	if (frame_length < mode->height + imx900->min_frame_length_delta)
 		frame_length = mode->height + imx900->min_frame_length_delta;
@@ -867,14 +868,14 @@ static int imx900_set_exposure(struct imx900 *imx900, u32 val)
 	static u32 count = 0;
 
 	frame_lines = imx900_frame_rate_to_frame_length(imx900, imx900->framerate->cur.val);
-	dev_err(dev, "[%u] set exposure extend: val=%llu\n", count++, (u64)val);
-	dev_err(dev, "  fps=%u, frame_lines=%u min_shs_length=%u height=%u \n", imx900->framerate->cur.val, frame_lines, imx900->min_shs_length, mode->height);
+	// dev_err(dev, "[%u] set exposure extend: val=%llu\n", count++, (u64)val);
+	// dev_err(dev, "  fps=%u, frame_lines=%u min_shs_length=%u height=%u \n", imx900->framerate->cur.val, frame_lines, imx900->min_shs_length, mode->height);
 
 	new_frame_lines = val + imx900->min_shs_length + imx900->min_frame_length_delta;
 	
 	if (new_frame_lines > frame_lines) {
 		frame_lines = new_frame_lines;
-		dev_err(dev, "    extend frame_lines=%u shs=%u\n", frame_lines, frame_lines - val - 1);
+		// dev_err(dev, "    extend frame_lines=%u shs=%u\n", frame_lines, frame_lines - val - 1);
 	}
 	new_vblank = frame_lines - mode->height;
 	imx900->vblank->val = new_vblank;
@@ -884,29 +885,18 @@ static int imx900_set_exposure(struct imx900 *imx900, u32 val)
 	{
 		struct imx900_regval rlist[2] = {
 				{ VMAX_LOW, 3, frame_lines },
-				{ SHS_LOW, 3, frame_lines - val - 1 }
+				{ SHS_LOW, 3, frame_lines - val}
 		};
+	ret = imx900_write_hold_reg_list(imx900, rlist, ARRAY_SIZE(rlist));
+		// u64 exposure;
+		// exposure = imx900->frame_length - val - 1;
+		// ret = imx900_write_hold_reg(imx900, SHS_LOW, 3, exposure);
 
-		ret = imx900_write_hold_reg_list(imx900, rlist, ARRAY_SIZE(rlist));
 		if (ret) {
 			dev_err(dev, "%s failed to set exposure\n", __func__);
 			return ret;
 		}
 	}
-	//  else {
-	// 	dev_err(dev, "shs=%u\n", frame_lines - val - 1);
-	// 	ret = imx900_write_hold_reg(imx900, SHS_LOW, 3, frame_lines - val - 1);		
-	// 	if (ret) {
-	// 			dev_err(dev, "%s failed to set exposure\n", __func__);
-	// 			return ret;
-	// 	}
-	// }
-	
-	// if (new_vblank > 0) {
-	// 	__v4l2_ctrl_s_ctrl(imx900->vblank, new_vblank);
-	// } else {
-	// 	imx900_update_frame_rate(imx900, imx900->framerate->cur.val);
-	// }
 
 	return ret;
 }
@@ -1007,7 +997,7 @@ static int imx900_set_vblank(struct imx900 *imx900, u64 val)
                 return ret;
         }
 
-       dev_err(dev, "%s: vblank=%llu frame_length=%u\n", __func__, val,
+    //    dev_err(dev, "%s: vblank=%llu frame_length=%u\n", __func__, val,
                imx900->frame_length);
 
         return ret;
@@ -1565,7 +1555,7 @@ static int imx900_set_pixel_format(struct imx900 *imx900)
 		}
 		break;
 	default:
-	dev_err(dev, "%s: unknown pixel format\n", __func__);
+		dev_err(dev, "%s: unknown pixel format\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1676,7 +1666,7 @@ static int imx900_set_ctrl(struct v4l2_ctrl *ctrl)
 		imx900_update_frame_rate(imx900, ctrl->val);
 		break;
 	case V4L2_CID_VBLANK:
-		imx900_update_vblank(imx900, ctrl->val);
+//		imx900_update_vblank(imx900, ctrl->val);
 		break;
 	}
 
